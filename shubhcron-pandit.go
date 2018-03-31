@@ -10,8 +10,8 @@ import (
 )
 
 type Response struct {
-  current string
-  list ChowgadhiyaTimeList
+  Current string
+  List ChowgadhiyaTimeList
 }
 
 type ChowgadhiyaTimeList map[string]int64
