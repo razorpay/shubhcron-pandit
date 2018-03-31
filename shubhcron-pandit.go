@@ -11,6 +11,7 @@ import (
 
 type Response struct {
   IsShubh bool
+  NextShubh int64
   Current string `json:"current"`
   List ChowgadhiyaTimeList `json:"list"`
 }
@@ -27,10 +28,31 @@ var chowgadhiyaToStringMap = map[Chowgadhiya]string{
   Udveg : "udveg",
 }
 
+func otherPhase(p Phase) Phase {
+  if p == Day {
+    return Night
+  }
+  return Day
+}
+
+func getSoonestShubhTime(list map[string]int64) int64 {
+  // Arbitrary minimum, one more digit than are in timestamps at the moment
+  // This means this script will stop working in the year 2286
+  // Hope I learn how to write Golang before that
+  min := int64(10000000000)
+  for _, value := range list {
+    if value < min {
+      min = value
+    }
+  }
+  return min
+}
+
 func getChowgadhiyaList(t time.Time) map[string]int64 {
   sunrise, sunset, nextSunrise := getVedicDay(t)
 
   var baseTime time.Time
+  var nextBase time.Time
   var phase Phase
   var offsetInSeconds float64
 
@@ -38,22 +60,41 @@ func getChowgadhiyaList(t time.Time) map[string]int64 {
     // Daytime
     phase = Day
     baseTime = sunrise
+    nextBase = sunset
     offsetInSeconds = (sunset.Sub(sunrise) / 8).Seconds()
   } else {
     // Nighttime
     phase = Night
     baseTime = sunset
+    nextBase = nextSunrise
     offsetInSeconds = (nextSunrise.Sub(sunset) / 8).Seconds()
     debug("time difference:", nextSunrise.Sub(t).Hours())
   }
 
-  list := getChowgadhiyaListFromWeekday(t.Weekday(), phase)
+  todayList := getChowgadhiyaListFromWeekday(t.Weekday(), phase)
+  // fmt.Println(todayList)
+  nextDayList := getChowgadhiyaListFromWeekday(t.Weekday()+1, otherPhase(phase))
+  // fmt.Println(nextDayList)
+
 
   cList := make(map[string]int64)
 
-  for index, element := range list {
+  for index, element := range todayList {
     delta := (float64(index) * offsetInSeconds)
-    cList[chowgadhiyaToStringMap[element]] = (int64(delta)+baseTime.Unix())
+    startTime := (int64(delta)+baseTime.Unix())
+    if (startTime > t.Unix() && isChowgadhiyaConsideredShubh(element)) {
+      cList[chowgadhiyaToStringMap[element]] = startTime
+    }
+  }
+
+  if len(cList) == 0 {
+    for index, element := range nextDayList {
+      delta := (float64(index) * offsetInSeconds)
+      startTime := (int64(delta)+nextBase.Unix())
+      if (startTime > t.Unix() && isChowgadhiyaConsideredShubh(element)) {
+        cList[chowgadhiyaToStringMap[element]] = startTime
+      }
+    }
   }
 
   return cList
@@ -66,8 +107,9 @@ func getChowgadhiyaResponse(w http.ResponseWriter, r *http.Request) {
   isShubh := isShubh(now)
   current := chowgadhiyaToStringMap[chowgadhiya]
   list := getChowgadhiyaList(now)
+  nextShubh := getSoonestShubhTime(list)
 
-  response := Response{isShubh, current, list}
+  response := Response{isShubh, nextShubh, current, list}
 
   fmt.Println(response)
   jResponse, _ := json.Marshal(response)
@@ -79,7 +121,6 @@ func determineListenAddress() (string, error) {
   if port == "" {
     return "", fmt.Errorf("$PORT not set")
   }
-  fmt.Println("PORT")
   return ":" + port, nil
 }
 
@@ -90,7 +131,6 @@ func main() {
     log.Fatal(err)
   }
   log.Printf("Listening on %s...\n", addr)
-  fmt.Println(addr)
   err = http.ListenAndServe(addr, nil) // set listen port
   if err != nil {
     log.Fatal("ListenAndServe: ", err)
