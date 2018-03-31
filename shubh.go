@@ -1,7 +1,6 @@
 package main
 
 import (
-  "fmt"
   "github.com/kelvins/sunrisesunset"
   "io/ioutil"
   "log"
@@ -56,13 +55,14 @@ var CHOWGADHIYA_LIST = map[Phase]map[time.Weekday][]Chowgadhiya{
   },
 }
 
-/**
- * There is some confusion as to whether Chal is
- * considered Shubh or not, we are avoiding
- */
-func isChowgadhiyaConsideredShubh(c Chowgadhiya) bool {
-  debug("Picked Chowgadhiya", c)
-  return (c == Amrit || c == Shubh || c == Labh)
+var chowgadhiyaToStringMap = map[Chowgadhiya]string{
+  Chal  : "chal",
+  Amrit : "amrit",
+  Kaal  : "kaal",
+  Labh  : "labh",
+  Rog   : "rog",
+  Shubh : "shubh",
+  Udveg : "udveg",
 }
 
 /**
@@ -115,6 +115,38 @@ func getChowgadhiya(t time.Time) Chowgadhiya {
   return list[chowgadhiyaIndex]
 }
 
+func getChowgadhiyaList(t time.Time) map[string]int64 {
+  sunrise, sunset, nextSunrise := getVedicDay(t)
+
+  var baseTime time.Time
+  var phase Phase
+  var offsetInSeconds float64
+
+  if t.Before(sunset) {
+    // Daytime
+    phase = Day
+    baseTime = sunrise
+    offsetInSeconds = (sunset.Sub(sunrise) / 8).Seconds()
+  } else {
+    // Nighttime
+    phase = Night
+    baseTime = sunset
+    offsetInSeconds = (nextSunrise.Sub(sunset) / 8).Seconds()
+    debug("time difference:", nextSunrise.Sub(t).Hours())
+  }
+
+  list := getChowgadhiyaListFromWeekday(t.Weekday(), phase)
+
+  cList := make(map[string]int64)
+
+  for index, element := range list {
+    delta := (float64(index) * offsetInSeconds)
+    cList[chowgadhiyaToStringMap[element]] = (int64(delta)+baseTime.Unix())
+  }
+
+  return cList
+}
+
 func getEnv(key, fallback string) string {
   if value, ok := os.LookupEnv(key); ok {
     return value
@@ -149,14 +181,6 @@ func getSunriseSunset(t time.Time) (time.Time, time.Time) {
     return sunrise, sunset
   }
   panic("sunrise/sunset calculations failed")
-}
-
-/**
- * returns whether now is an auspicious time or not
- */
-func isShubh(now time.Time) bool {
-  chowgadhiya := getChowgadhiya(now)
-  return isChowgadhiyaConsideredShubh(chowgadhiya)
 }
 
 func debug(strings ...interface{}) {
@@ -211,14 +235,4 @@ func getVedicDay(now time.Time) (time.Time, time.Time, time.Time) {
   debug("Next sunrise:", nextSunrise)
 
   return sunrise, sunset, nextSunrise
-}
-
-func printHelp() {
-  // Replacing this with a proper parser is left
-  // as an exercise for the reader
-  fmt.Println("Usage: shubh command [args...]")
-  fmt.Println("  Runs the command only if the time is auspicious")
-  fmt.Println("  Exits with status 1 otherwise")
-  fmt.Println("  Set SHUBH_WAIT environment variable to wait and run the command instead")
-  fmt.Println("  Set DEBUG environment variable for debugging")
 }
