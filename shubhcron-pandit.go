@@ -5,7 +5,8 @@ import (
     "net/http"
     "log"
     "time"
-    "encoding/json"
+    // "encoding/json"
+    "github.com/alioygur/gores"
 )
 
 type Response struct {
@@ -66,12 +67,9 @@ func getChowgadhiyaResponse(w http.ResponseWriter, r *http.Request) {
 
     response := Response{current, list}
 
-    jresponse, err := json.MarshalIndent(response, "", "  ")
+    fmt.Println(response)
 
-    if err != nil {
-        panic(err)
-    }
-    fmt.Fprintf(w, string(jresponse))
+    gores.JSON(w, http.StatusOK, response)
 }
 
 func main() {
