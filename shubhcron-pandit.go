@@ -10,8 +10,8 @@ import (
 )
 
 type Response struct {
-  Current string
-  List ChowgadhiyaTimeList
+  Current string `json:"current"`
+  List ChowgadhiyaTimeList `json:"list"`
 }
 
 type ChowgadhiyaTimeList map[string]int64
