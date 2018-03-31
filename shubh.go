@@ -7,6 +7,7 @@ import (
   "log"
   "math"
   "os"
+  "os/exec"
   "strconv"
   "time"
 )
@@ -37,22 +38,22 @@ const DEFAULT_LONGITUDE string = "82.1986"
 // Golang does not allow constant maps, but a literal map is close enough
 var CHOWGADHIYA_LIST = map[Phase]map[time.Weekday][]Chowgadhiya{
   Day: map[time.Weekday][]Chowgadhiya{
-    time.Sunday    : []Chowgadhiya{Udveg , Chal  , Labh  , Amrit , Kaal  , Shubh , Rog   , Udveg} ,
-    time.Monday    : []Chowgadhiya{Amrit , Kaal  , Shubh , Rog   , Udveg , Chal  , Labh  , Amrit} ,
-    time.Tuesday   : []Chowgadhiya{Rog   , Udveg , Chal  , Labh  , Amrit , Kaal  , Shubh , Rog}   ,
-    time.Wednesday : []Chowgadhiya{Labh  , Amrit , Kaal  , Shubh , Rog   , Udveg , Chal  , Labh}  ,
-    time.Thursday  : []Chowgadhiya{Shubh , Rog   , Udveg , Chal  , Labh  , Amrit , Kaal  , Shubh} ,
-    time.Friday    : []Chowgadhiya{Chal  , Labh  , Amrit , Kaal  , Shubh , Rog   , Udveg , Chal}  ,
-    time.Saturday  : []Chowgadhiya{Kaal  , Shubh , Rog   , Udveg , Chal  , Labh  , Amrit , Kaal}  ,
+    time.Sunday:    []Chowgadhiya{Udveg, Chal, Labh, Amrit, Kaal, Shubh, Rog, Udveg},
+    time.Monday:    []Chowgadhiya{Amrit, Kaal, Shubh, Rog, Udveg, Chal, Labh, Amrit},
+    time.Tuesday:   []Chowgadhiya{Rog, Udveg, Chal, Labh, Amrit, Kaal, Shubh, Rog},
+    time.Wednesday: []Chowgadhiya{Labh, Amrit, Kaal, Shubh, Rog, Udveg, Chal, Labh},
+    time.Thursday:  []Chowgadhiya{Shubh, Rog, Udveg, Chal, Labh, Amrit, Kaal, Shubh},
+    time.Friday:    []Chowgadhiya{Chal, Labh, Amrit, Kaal, Shubh, Rog, Udveg, Chal},
+    time.Saturday:  []Chowgadhiya{Kaal, Shubh, Rog, Udveg, Chal, Labh, Amrit, Kaal},
   },
   Night: map[time.Weekday][]Chowgadhiya{
-    time.Sunday    : []Chowgadhiya{Shubh , Amrit , Chal  , Rog   , Kaal  , Labh  , Udveg , Shubh} ,
-    time.Monday    : []Chowgadhiya{Chal  , Rog   , Kaal  , Labh  , Udveg , Shubh , Amrit , Chal}  ,
-    time.Tuesday   : []Chowgadhiya{Kaal  , Labh  , Udveg , Shubh , Amrit , Chal  , Rog   , Kaal}  ,
-    time.Wednesday : []Chowgadhiya{Udveg , Shubh , Amrit , Chal  , Rog   , Kaal  , Labh  , Udveg} ,
-    time.Thursday  : []Chowgadhiya{Amrit , Chal  , Rog   , Kaal  , Labh  , Udveg , Shubh , Amrit} ,
-    time.Friday    : []Chowgadhiya{Rog   , Kaal  , Labh  , Udveg , Shubh , Amrit , Chal  , Rog}   ,
-    time.Saturday  : []Chowgadhiya{Labh  , Udveg , Shubh , Amrit , Chal  , Rog   , Kaal  , Labh}  ,
+    time.Sunday:    []Chowgadhiya{Shubh, Amrit, Chal, Rog, Kaal, Labh, Udveg, Shubh},
+    time.Monday:    []Chowgadhiya{Chal, Rog, Kaal, Labh, Udveg, Shubh, Amrit, Chal},
+    time.Tuesday:   []Chowgadhiya{Kaal, Labh, Udveg, Shubh, Amrit, Chal, Rog, Kaal},
+    time.Wednesday: []Chowgadhiya{Udveg, Shubh, Amrit, Chal, Rog, Kaal, Labh, Udveg},
+    time.Thursday:  []Chowgadhiya{Amrit, Chal, Rog, Kaal, Labh, Udveg, Shubh, Amrit},
+    time.Friday:    []Chowgadhiya{Rog, Kaal, Labh, Udveg, Shubh, Amrit, Chal, Rog},
+    time.Saturday:  []Chowgadhiya{Labh, Udveg, Shubh, Amrit, Chal, Rog, Kaal, Labh},
   },
 }
 
@@ -127,7 +128,7 @@ func getSunriseSunset(t time.Time) (time.Time, time.Time) {
 
   _, offset := t.Zone()
 
-  fractional_offset := (float64(offset)/60/60);
+  fractional_offset := (float64(offset) / 60 / 60)
 
   if fractional_offset > 12 {
     fractional_offset = 12 - fractional_offset
@@ -222,3 +223,46 @@ func printHelp() {
   fmt.Println("  Set SHUBH_WAIT environment variable to wait and run the command instead")
   fmt.Println("  Set DEBUG environment variable for debugging")
 }
+
+/**
+ * Runs the command if the time is Shubh
+ * and exits if it was ran
+ */
+func runCommand() {
+  command := os.Args[1]
+  argsWithoutProg := os.Args[2:]
+
+  now := time.Now()
+
+  if isShubh(now) {
+    cmd := exec.Command(command, argsWithoutProg...)
+    cmd.Stdout = os.Stdout
+    cmd.Stderr = os.Stderr
+    err := cmd.Run()
+    if err == nil {
+      os.Exit(0)
+    } else {
+      fmt.Println("error in executing command. Command:", os.Args[1:])
+      os.Exit(255)
+    }
+  }
+}
+
+// func main() {
+//   if len(os.Args) < 2 {
+//     printHelp()
+//     os.Exit(0)
+//   }
+
+//   _, wait := os.LookupEnv("SHUBH_WAIT")
+
+//   // Since our shubh times are ~90 minutes long
+//   // we are okay checking every minute
+//   runCommand()
+//   if wait {
+//     debug("Running in wait mode")
+//     for range time.Tick(10 * time.Second) {
+//       runCommand()
+//     }
+//   }
+// }

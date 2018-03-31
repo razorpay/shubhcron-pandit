@@ -5,8 +5,16 @@ import (
     "net/http"
     "log"
     "time"
-    "encoding/json"
+    // "encoding/json"
+    "github.com/alioygur/gores"
 )
+
+type Response struct {
+  Current string
+  List ChowgadhiyaTimeList
+}
+
+type ChowgadhiyaTimeList map[string]int64
 
 var chowgadhiyaToStringMap = map[Chowgadhiya]string{
   Chal  : "chal",
@@ -18,21 +26,54 @@ var chowgadhiyaToStringMap = map[Chowgadhiya]string{
   Udveg : "udveg",
 }
 
-func sayhelloName(w http.ResponseWriter, r *http.Request) {
+func getChowgadhiyaList(t time.Time) map[string]int64 {
+  sunrise, sunset, nextSunrise := getVedicDay(t)
+
+  var baseTime time.Time
+  var phase Phase
+  var offsetInSeconds float64
+
+  if t.Before(sunset) {
+    // Daytime
+    phase = Day
+    baseTime = sunrise
+    offsetInSeconds = (sunset.Sub(sunrise) / 8).Seconds()
+  } else {
+    // Nighttime
+    phase = Night
+    baseTime = sunset
+    offsetInSeconds = (nextSunrise.Sub(sunset) / 8).Seconds()
+    debug("time difference:", nextSunrise.Sub(t).Hours())
+  }
+
+  list := getChowgadhiyaListFromWeekday(t.Weekday(), phase)
+
+  cList := make(map[string]int64)
+
+  for index, element := range list {
+    delta := (float64(index) * offsetInSeconds)
+    cList[chowgadhiyaToStringMap[element]] = (int64(delta)+baseTime.Unix())
+  }
+
+  return cList
+}
+
+func getChowgadhiyaResponse(w http.ResponseWriter, r *http.Request) {
     now := time.Now()
     chowgadhiya := getChowgadhiya(now)
 
-    response := make(map[string]string)
-    response["current"] = chowgadhiyaToStringMap[chowgadhiya]
+    current := chowgadhiyaToStringMap[chowgadhiya]
+    list := getChowgadhiyaList(now)
 
-    jresponse, _ := json.Marshal(response)
+    response := Response{current, list}
 
-    fmt.Fprintf(w, string(jresponse))
+    fmt.Println(response)
+
+    gores.JSON(w, http.StatusOK, response)
 }
 
-
 func main() {
-    http.HandleFunc("/chowgadhiya", sayhelloName) // set router
+    http.HandleFunc("/chowgadhiya", getChowgadhiyaResponse) // set router
     err := http.ListenAndServe(":9090", nil) // set listen port
     if err != nil {
         log.Fatal("ListenAndServe: ", err)
