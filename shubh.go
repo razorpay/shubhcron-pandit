@@ -82,6 +82,10 @@ func getChowgadhiya(t time.Time) Chowgadhiya {
   debug("Next sunrise:", nextSunrise)
   debug("Current time:", t)
 
+  fmt.Println(sunrise)
+  fmt.Println(nextSunrise)
+  fmt.Println(t)
+
   if t.Before(sunrise) || t.After(nextSunrise) {
     panic("current time does not fall between Sunrise and Sunset")
   }
@@ -198,6 +202,10 @@ func getVedicDay(now time.Time) (time.Time, time.Time, time.Time) {
 
     sunset = time.Date(yesterday.Year(), yesterday.Month(), yesterday.Day(), sunset.Hour(), sunset.Minute(), sunset.Second(), sunset.Nanosecond(), loc)
     nextSunrise = time.Date(yesterday.Year(), yesterday.Month(), yesterday.Day(), nextSunrise.Hour(), nextSunrise.Minute(), nextSunrise.Second(), nextSunrise.Nanosecond(), loc)
+
+    tmp := nextSunrise
+    nextSunrise = sunrise
+    sunrise = tmp
   } else {
     debug("Sun is up, rise and shine")
     // Calculate the sunrise time for tomorrow

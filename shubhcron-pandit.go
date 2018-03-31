@@ -10,6 +10,7 @@ import (
 )
 
 type Response struct {
+  IsShubh bool
   Current string `json:"current"`
   List ChowgadhiyaTimeList `json:"list"`
 }
@@ -62,10 +63,11 @@ func getChowgadhiyaResponse(w http.ResponseWriter, r *http.Request) {
   now := time.Now()
   chowgadhiya := getChowgadhiya(now)
 
+  isShubh := isShubh(now)
   current := chowgadhiyaToStringMap[chowgadhiya]
   list := getChowgadhiyaList(now)
 
-  response := Response{current, list}
+  response := Response{isShubh, current, list}
 
   fmt.Println(response)
   jResponse, _ := json.Marshal(response)
