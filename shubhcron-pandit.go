@@ -1,12 +1,12 @@
 package main
 
 import (
+    "os"
     "fmt"
     "net/http"
     "log"
     "time"
-    // "encoding/json"
-    "github.com/alioygur/gores"
+    "encoding/json"
 )
 
 type Response struct {
@@ -59,23 +59,36 @@ func getChowgadhiyaList(t time.Time) map[string]int64 {
 }
 
 func getChowgadhiyaResponse(w http.ResponseWriter, r *http.Request) {
-    now := time.Now()
-    chowgadhiya := getChowgadhiya(now)
+  now := time.Now()
+  chowgadhiya := getChowgadhiya(now)
 
-    current := chowgadhiyaToStringMap[chowgadhiya]
-    list := getChowgadhiyaList(now)
+  current := chowgadhiyaToStringMap[chowgadhiya]
+  list := getChowgadhiyaList(now)
 
-    response := Response{current, list}
+  response := Response{current, list}
 
-    fmt.Println(response)
+  fmt.Println(response)
+  jResponse, _ := json.Marshal(response)
+  fmt.Fprintf(w, string(jResponse))
+}
 
-    gores.JSON(w, http.StatusOK, response)
+func determineListenAddress() (string, error) {
+  port := os.Getenv("PORT")
+  if port == "" {
+    return "", fmt.Errorf("$PORT not set")
+  }
+  return ":" + port, nil
 }
 
 func main() {
-    http.HandleFunc("/chowgadhiya", getChowgadhiyaResponse) // set router
-    err := http.ListenAndServe(":9090", nil) // set listen port
-    if err != nil {
-        log.Fatal("ListenAndServe: ", err)
-    }
+  http.HandleFunc("/chowgadhiya", getChowgadhiyaResponse) // set router
+  addr, err := determineListenAddress()
+  if err != nil {
+    log.Fatal(err)
+  }
+  log.Printf("Listening on %s...\n", addr)
+  err = http.ListenAndServe(":9090", nil) // set listen port
+  if err != nil {
+    log.Fatal("ListenAndServe: ", err)
+  }
 }
