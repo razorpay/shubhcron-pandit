@@ -1,0 +1,12 @@
+{
+	"ImportPath": "shubhcron-pandit",
+	"GoVersion": "go1.9",
+	"GodepVersion": "v80",
+	"Deps": [
+		{
+			"ImportPath": "github.com/kelvins/sunrisesunset",
+			"Comment": "v1.0-14-g14f1915",
+			"Rev": "14f1915ad4b4fc68cdf3c144e39293993e21c67c"
+		}
+	]
+}

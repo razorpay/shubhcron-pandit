@@ -1,1 +1,1 @@
-web: go run shubh.go shubhcron-pandit.go 
+web: shubhcron-pandit
