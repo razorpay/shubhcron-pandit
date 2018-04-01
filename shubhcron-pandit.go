@@ -1,31 +1,31 @@
 package main
 
 import (
-  "os"
-  "fmt"
-  "net/http"
-  "log"
-  "time"
   "encoding/json"
+  "fmt"
+  "log"
+  "net/http"
+  "os"
+  "time"
 )
 
 type Response struct {
-  IsShubh bool
+  IsShubh   bool
   NextShubh int64
-  Current string `json:"current"`
-  List ChowgadhiyaTimeList `json:"list"`
+  Current   string              `json:"current"`
+  List      ChowgadhiyaTimeList `json:"list"`
 }
 
 type ChowgadhiyaTimeList map[string]int64
 
 var chowgadhiyaToStringMap = map[Chowgadhiya]string{
-  Chal  : "chal",
-  Amrit : "amrit",
-  Kaal  : "kaal",
-  Labh  : "labh",
-  Rog   : "rog",
-  Shubh : "shubh",
-  Udveg : "udveg",
+  Chal:  "chal",
+  Amrit: "amrit",
+  Kaal:  "kaal",
+  Labh:  "labh",
+  Rog:   "rog",
+  Shubh: "shubh",
+  Udveg: "udveg",
 }
 
 func otherPhase(p Phase) Phase {
@@ -76,13 +76,12 @@ func getChowgadhiyaList(t time.Time) map[string]int64 {
   nextDayList := getChowgadhiyaListFromWeekday(t.Weekday()+1, otherPhase(phase))
   // fmt.Println(nextDayList)
 
-
   cList := make(map[string]int64)
 
   for index, element := range todayList {
     delta := (float64(index) * offsetInSeconds)
-    startTime := (int64(delta)+baseTime.Unix())
-    if (startTime > t.Unix() && isChowgadhiyaConsideredShubh(element)) {
+    startTime := (int64(delta) + baseTime.Unix())
+    if startTime > t.Unix() && isChowgadhiyaConsideredShubh(element) {
       cList[chowgadhiyaToStringMap[element]] = startTime
     }
   }
@@ -90,8 +89,8 @@ func getChowgadhiyaList(t time.Time) map[string]int64 {
   if len(cList) == 0 {
     for index, element := range nextDayList {
       delta := (float64(index) * offsetInSeconds)
-      startTime := (int64(delta)+nextBase.Unix())
-      if (startTime > t.Unix() && isChowgadhiyaConsideredShubh(element)) {
+      startTime := (int64(delta) + nextBase.Unix())
+      if startTime > t.Unix() && isChowgadhiyaConsideredShubh(element) {
         cList[chowgadhiyaToStringMap[element]] = startTime
       }
     }
@@ -113,6 +112,8 @@ func getChowgadhiyaResponse(w http.ResponseWriter, r *http.Request) {
 
   fmt.Println(response)
   jResponse, _ := json.Marshal(response)
+  w.Header().Set("Access-Control-Allow-Origin", "*")
+  w.Header().Set("Content-Type", "application/json")
   fmt.Fprintf(w, string(jResponse))
 }
 
